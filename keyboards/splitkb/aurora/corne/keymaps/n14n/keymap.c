@@ -6,6 +6,7 @@
 #define ANIM_FRAME_TIME_SLOW 500
 #define ANIM_FRAME_TIME_FAST 100
 #define WPM_THRESHOLD_FAST 100
+#define WPM_THRESHOLD_OFF 5
 
 // Menu constants
 #define MENU_MAX_ITEMS 4
@@ -27,34 +28,47 @@ static const char PROGMEM menu_line[MENU_MAX_ITEMS][7] = {
 };
 static uint8_t menu_selected = 0;
 
-// OS constants
-static bool os_detected = false;
-
 // Custom keycodes
 enum custom_keycodes {
     _MACRO = SAFE_RANGE,
 };
 
+enum {
+    _TESC,
+};
+
+tap_dance_action_t tap_dance_actions[] = {
+    // Tap once for Tab, twice for Escape
+    [_TESC] = ACTION_TAP_DANCE_DOUBLE(KC_TAB, KC_ESC),
+};
+
 // KEYMAPS
 enum layers {
     _BASE = 0,
-    _LO   = 1,
-    _HI   = 2,
-    _FN   = 3,
+    _MAC  = 1,
+    _LO   = 2,
+    _HI   = 3,
+    _FN   = 4,
 };
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [_BASE] = LAYOUT_split_3x6_3(
-        KC_TAB,  KC_Q,    KC_W,    KC_E,    KC_R,    KC_T,              KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,    KC_BSPC,
+        TD(_TESC), KC_Q,  KC_W,    KC_E,    KC_R,    KC_T,              KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,    KC_BSPC,
         KC_LSFT, KC_A,    KC_S,    KC_D,    KC_F,    KC_G,              KC_H,    KC_J,    KC_K,    KC_L,    KC_SCLN, KC_QUOT,
-        KC_LCTL, KC_Z,    KC_X,    KC_C,    KC_V,    KC_B,              KC_N,    KC_M,    KC_COMM, KC_DOT,  KC_SLSH, KC_ESC,
-                                   KC_LWIN, TL_LOWR, KC_SPC,            KC_ENT,  TL_UPPR, KC_LALT
+        KC_LCTL, KC_Z,    KC_X,    KC_C,    KC_V,    KC_B,              KC_N,    KC_M,    KC_COMM, KC_DOT,  KC_SLSH, KC_LALT,
+                                   KC_LWIN, TL_LOWR, KC_SPC,            KC_ENT,  TL_UPPR, XXXXXXX
+    ),
+    [_MAC] = LAYOUT_split_3x6_3(
+        _______, _______, _______, _______, _______, _______,           _______, _______, _______, _______, _______, _______,
+        _______, _______, _______, _______, _______, _______,           _______, _______, _______, _______, _______, _______,
+        KC_LWIN, _______, _______, _______, _______, _______,           _______, _______, _______, _______, _______, _______,
+                                   KC_LCTL, _______, _______,           _______, _______, _______
     ),
     [_LO] = LAYOUT_split_3x6_3(
         KC_GRV,  KC_1,    KC_2,    KC_3,    KC_4,    KC_5,              KC_6,    KC_7,    KC_8,    KC_9,    KC_0,    KC_DEL,
         _______, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,           KC_LEFT, KC_DOWN, KC_UP,  KC_RIGHT, XXXXXXX, XXXXXXX,
         _______, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,           XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, _______,
-                                   _______, _______, _______,           _______, _______, _______
+                                   _______, _______, _______,           _______, _______, KC_MUTE
     ),
     [_HI] = LAYOUT_split_3x6_3(
         _______, KC_EXLM, KC_AT,   KC_HASH, KC_DLR,  KC_PERC,           KC_CIRC, KC_AMPR, KC_ASTR, KC_LPRN, KC_RPRN, _______,
@@ -63,7 +77,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
                                    _MACRO,  _______, _______,           _______, _______, _______
     ),
     [_FN] = LAYOUT_split_3x6_3(
-        _______, KC_F1,   KC_F2,   KC_F3,   KC_F4,   KC_F5,             KC_F6,   KC_F7,   KC_F8,   KC_F9,   KC_F10,  _______,
+        KC_SLEP, KC_F1,   KC_F2,   KC_F3,   KC_F4,   KC_F5,             KC_F6,   KC_F7,   KC_F8,   KC_F9,   KC_F10,  TG(_MAC),
         _______, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,           KC_F11,  KC_F12,  XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,
         _______, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,           XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, _______,
                                    _______, _______, _______,           _______, _______, _______
@@ -74,10 +88,12 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 uint8_t get_layer(void) {
     if(layer_state_is(_FN)) {
         return _FN;
-    } else if(layer_state_is(_LO)) {
-        return _LO;
     } else if(layer_state_is(_HI)) {
         return _HI;
+    } else if(layer_state_is(_LO)) {
+        return _LO;
+    } else if(layer_state_is(_MAC)) {
+        return _MAC;
     } else  {
         return _BASE;
     }
@@ -94,6 +110,9 @@ void set_layer_light(uint8_t layer) {
             break;
         case _FN:
             rgblight_sethsv(HSV_MAGENTA);
+            break;
+        case _MAC:
+            rgblight_sethsv(HSV_GREEN);
             break;
         default:
             rgblight_sethsv(HSV_WHITE);
@@ -116,6 +135,13 @@ bool encoder_update_user(uint8_t index, bool clockwise) {
                 }
             }
             break;
+        case _LO:
+            if (index == 0) {
+                tap_code_delay(clockwise ? KC_PGUP : KC_PGDN, 10);
+            } else {
+                tap_code_delay(clockwise ? KC_VOLU : KC_VOLD, 10);
+            }
+            break;
         default:
             if (index == 0) {
                 tap_code_delay(clockwise ? KC_WH_U : KC_WH_D, 10);
@@ -131,21 +157,12 @@ bool encoder_update_user(uint8_t index, bool clockwise) {
 
 // OLED SCREEN
 #ifdef OLED_ENABLE
-static void render_logo(void) {
-    static uint32_t anim_timer = 0;
-    static uint8_t frame_idx = 0;
-
-    uint32_t anim_frame_time = ANIM_FRAME_TIME_SLOW;
-    if(get_current_wpm() > WPM_THRESHOLD_FAST) {
-        anim_frame_time = ANIM_FRAME_TIME_FAST;
-    }
-    if(timer_elapsed32(anim_timer) > anim_frame_time) {
-        anim_timer = timer_read32();
-        frame_idx = (frame_idx + 1) % 2;
-    }
-
+static void render_background(void) {
     static const char PROGMEM ferris_logo_bg[][8*16] = {
         [_BASE] = {
+            0,  0,  0,240,216,252,124,252,204,216,240,  0,  0,  4, 10,  4,  0,  0, 64,  0,  0,  0,  0,  0,  0, 32, 80, 32,  0,  0,  0,  0, 64,128,160,248,145, 99,227,211, 35,249, 80,160,192,176,172,254,172, 80,192,224,240, 96, 80,252, 88, 96,160,240,144,252, 72,240,181, 95,250,207,250,171,255,174,181, 95,255,213,255,182,202,255,174,255,214,234,127,239,213,255,101,251,214,255,213,186,165,255, 13, 71, 55, 99, 18, 99, 35,  3, 13,131,129,225,227,231,193,193,193,227,225,225,133,153, 13,  1,  3, 67, 19, 99, 18,103,  7, 31,
+        },
+        [_MAC] = {
             0,  0,  0,240,216,252,124,252,204,216,240,  0,  0,  4, 10,  4,  0,  0, 64,  0,  0,  0,  0,  0,  0, 32, 80, 32,  0,  0,  0,  0, 64,128,160,248,145, 99,227,211, 35,249, 80,160,192,176,172,254,172, 80,192,224,240, 96, 80,252, 88, 96,160,240,144,252, 72,240,181, 95,250,207,250,171,255,174,181, 95,255,213,255,182,202,255,174,255,214,234,127,239,213,255,101,251,214,255,213,186,165,255, 13, 71, 55, 99, 18, 99, 35,  3, 13,131,129,225,227,231,193,193,193,227,225,225,133,153, 13,  1,  3, 67, 19, 99, 18,103,  7, 31,
         },
         [_LO] = {
@@ -158,56 +175,82 @@ static void render_logo(void) {
             42,117,106,117, 42, 93, 26,213, 26,157, 42,117,106,117, 42, 21, 90, 13, 82,255, 82,  5, 14,173,138,157,186,189, 42,117,106,117,128,149,128,249, 84, 62, 21, 63, 16, 34,124,215,255, 84, 57, 32,101,224,253, 87,127,120,255, 22,188, 52,188, 30,191, 32,245,216, 80,250,210,255,220,244,192,213, 64,121,104,123,104,125, 96,125, 84,124, 84,124, 96,101,127, 40,122,168,250,  0,234,160,255,162, 21, 55,  9, 27,  5, 13,  2,  6,  1,131,129,227,225,227,193,195,193,227,225,227,129,131,  1,  3,  1,  6,  2, 13,  5, 26, 11, 54,
         },
     };
-    static const char PROGMEM ferris_logo[][8*8] = {
-        {
-            0x00, 0x40, 0xf0, 0xe0, 0x00, 0xe0, 0xe0, 0xfc,
-            0xfc, 0xff, 0xdf, 0xef, 0xef, 0xdf, 0xff, 0xff,
-            0xdf, 0xef, 0xef, 0xdf, 0xff, 0xff, 0xfc, 0xfc,
-            0xe0, 0xe0, 0x00, 0xc0, 0xe0, 0x80, 0x00, 0x00,
-
-            0x00, 0x00, 0x00, 0x04, 0x03, 0x17, 0x0f, 0x07,
-            0x07, 0x0f, 0x0f, 0x0f, 0x1f, 0x1d, 0x1b, 0x1b,
-            0x1d, 0x1f, 0x1f, 0x0f, 0x0f, 0x0f, 0x07, 0x07,
-            0x1f, 0x07, 0x0f, 0x11, 0x01, 0x00, 0x00, 0x00,
-        },
-        {
-            0x00, 0x80, 0xe0, 0xc0, 0x00, 0xe0, 0xe0, 0xfc,
-            0xfc, 0xff, 0xdf, 0xef, 0xef, 0xdf, 0xff, 0xff,
-            0xdf, 0xef, 0xef, 0xdf, 0xff, 0xff, 0xfc, 0xfc,
-            0xe0, 0xe0, 0x00, 0xe0, 0xf0, 0x40, 0x00, 0x00,
-
-            0x00, 0x00, 0x01, 0x11, 0x0f, 0x07, 0x1f, 0x27,
-            0x07, 0x0f, 0x0f, 0x0f, 0x1f, 0x1d, 0x1b, 0x1b,
-            0x1d, 0x1f, 0x1f, 0x0f, 0x0f, 0x0f, 0x07, 0x07,
-            0x0f, 0x17, 0x03, 0x04, 0x00, 0x00, 0x00, 0x00,
-        },
-    };
 
     uint8_t layer = get_layer();
 
     oled_set_cursor(0, 0);
     oled_write_raw_P(ferris_logo_bg[layer], sizeof(ferris_logo_bg[layer]));
+}
+
+static void render_ferris(void) {
+    static uint32_t anim_timer = 0;
+    static uint8_t frame_idx = 0;
+
+
+    uint8_t wpm = get_current_wpm();
+    uint32_t anim_frame_time = ANIM_FRAME_TIME_SLOW;
+    if(wpm > WPM_THRESHOLD_FAST) {
+        anim_frame_time = ANIM_FRAME_TIME_FAST;
+    }
+    uint8_t cur_frame = 0;
+    if(timer_elapsed32(anim_timer) > anim_frame_time) {
+        anim_timer = timer_read32();
+        frame_idx = (frame_idx + 1) % 2;
+    }
+    if(wpm > WPM_THRESHOLD_OFF) {
+        cur_frame += frame_idx + 1;
+    }
+
+    uint8_t layer = get_layer();
+
     oled_set_cursor(0, 4);
-    oled_write_raw_P(ferris_logo[frame_idx], sizeof(ferris_logo[frame_idx]));
+    // Upper line
+    if(cur_frame == 1) {
+        oled_write_P(PSTR("\xd2\xd3"), false);
+    } else {
+        oled_write_P(PSTR("\xce\xcf"), false);
+    }
+    switch (layer) {
+        case _LO:
+            oled_write_P(PSTR("\xb8\xb9\xba\xbb"), false);
+            break;
+        case _HI:
+            oled_write_P(PSTR("\xbc\xbd\xbe\xbf"), false);
+            break;
+        case _FN:
+            oled_write_P(PSTR("\xd8\xd9\xda\xdb"), false);
+            break;
+        default:
+            oled_write_P(PSTR("\xb1\xb2\xb3\xb4"), false);
+            break;
+    }
+    if(cur_frame == 2) {
+        oled_write_P(PSTR("\xf2\xf3"), false);
+    } else {
+        oled_write_P(PSTR("\xee\xef"), false);
+    }
+    // Lower line
+    if(cur_frame == 1) {
+        oled_write_P(PSTR("\xd4\xd5"), false);
+    } else {
+        oled_write_P(PSTR("\xd0\xd1"), false);
+    }
+    oled_write_P(PSTR("\xb5\xb6\xb7"), false);
+    if(cur_frame == 2) {
+        oled_write_P(PSTR("\xf4\xf5 "), false);
+    } else {
+        oled_write_P(PSTR("\xf0\xf1 "), false);
+    }
 }
 
 void render_os(void) {
     oled_set_cursor(0, 8);
     oled_write_P(PSTR(" \x98\x99\x9a\x9b\x9c\x9d "), false);
 
-    switch (detected_host_os()) {
-        case OS_WINDOWS:
-            oled_write_P(PSTR(" \x9e\x9f     "), false);
-            break;
-        case OS_MACOS:
-            oled_write_P(PSTR("   \x9e\x9f   "), false);
-            break;
-        case OS_LINUX:
-            oled_write_P(PSTR("     \x9e\x9f "), false);
-            break;
-        default:
-            oled_write_P(PSTR("        "), false);
-            break;
+    if(layer_state_is(_MAC)) {
+        oled_write_P(PSTR("   \x9e\x9f   "), false);
+    } else {
+        oled_write_P(PSTR(" \x9e\x9f     "), false);
     }
 }
 
@@ -323,7 +366,8 @@ static void render_menu(void) {
 
 bool oled_task_user(void) {
     if (is_keyboard_master()) {
-        render_logo();
+        render_background();
+        render_ferris();
         render_os();
         render_mods(get_mods()|get_oneshot_mods());
     } else {
