@@ -16,20 +16,31 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 
+// OLED
 #ifdef OLED_ENABLE
 #   define OLED_FONT_H "keyboards/splitkb/aurora/corne/keymaps/n14n/glcdfont.c"
 #   define OLED_FONT_WIDTH 4
 #   define OLED_FONT_HEIGHT 8
 #   define OLED_FONT_END 255
 #endif
+
+// RGB lights
 #ifdef RGBLIGHT_ENABLE
 #   define RGBLIGHT_SLEEP
 #   define RGBLIGHT_SPLIT
 #endif
+
+// Tap dance
 #define TAPPING_TERM 175
+
+// Tri-layer
 #ifdef TRI_LAYER_ENABLE
 #   define TRI_LAYER_LOWER_LAYER 2
 #   define TRI_LAYER_UPPER_LAYER 3
 #   define TRI_LAYER_ADJUST_LAYER 4
 #endif
+
+// Split
 #define SPLIT_TRANSACTION_IDS_USER USER_SYNC_MENU
+#define SPLIT_OLED_ENABLE
+#define SPLIT_WPM_ENABLE

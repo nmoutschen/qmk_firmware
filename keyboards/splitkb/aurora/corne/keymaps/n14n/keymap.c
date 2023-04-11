@@ -9,22 +9,28 @@
 #define WPM_THRESHOLD_OFF 5
 
 // Menu constants
-#define MENU_MAX_ITEMS 4
+#define MENU_MAX_ITEMS 6
 static const char PROGMEM macro_0[] = "#[derive(Clone, Debug)]\n";
 static const char PROGMEM macro_1[] = "#[cfg(test)]\nmod tests {\nuse super::*;\nuse rstest::*;\nuse speculoos::prelude::*;\nuse mockall::predicate::*;\n\n";
-static const char PROGMEM macro_2[] = "";
+static const char PROGMEM macro_2[] = "Kwak.";
 static const char PROGMEM macro_3[] = "";
+static const char PROGMEM macro_4[] = "";
+static const char PROGMEM macro_5[] = "";
 static const char PROGMEM *macros[MENU_MAX_ITEMS] = {
     macro_0,
     macro_1,
     macro_2,
-    macro_3
+    macro_3,
+    macro_4,
+    macro_5
 };
 static const char PROGMEM menu_line[MENU_MAX_ITEMS][7] = {
     "Derive",
-    "Test  ",
-    "Opt. 2",
-    "Opt. 3"
+    "Test\x03\x04",
+    "\x01\x02\x01\x02\x01\x02",
+    "      ",
+    "      ",
+    "      "
 };
 static uint8_t menu_selected = 0;
 
@@ -66,7 +72,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     ),
     [_LO] = LAYOUT_split_3x6_3(
         KC_GRV,  KC_1,    KC_2,    KC_3,    KC_4,    KC_5,              KC_6,    KC_7,    KC_8,    KC_9,    KC_0,    KC_DEL,
-        _______, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,           KC_LEFT, KC_DOWN, KC_UP,  KC_RIGHT, XXXXXXX, XXXXXXX,
+        _______, XXXXXXX, KC_LEFT, KC_DOWN, KC_UP,  KC_RIGHT,           KC_LEFT, KC_DOWN, KC_UP,  KC_RIGHT, XXXXXXX, XXXXXXX,
         _______, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX,           XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, XXXXXXX, _______,
                                    _______, _______, _______,           _______, _______, KC_MUTE
     ),
@@ -129,9 +135,9 @@ bool encoder_update_user(uint8_t index, bool clockwise) {
         case _HI:
             if (index == 0) {
                 if (clockwise) {
-                    menu_selected = (menu_selected + 1) % MENU_MAX_ITEMS;
-                } else {
                     menu_selected = (menu_selected + MENU_MAX_ITEMS - 1) % MENU_MAX_ITEMS;
+                } else {
+                    menu_selected = (menu_selected + 1) % MENU_MAX_ITEMS;
                 }
             }
             break;
@@ -155,7 +161,7 @@ bool encoder_update_user(uint8_t index, bool clockwise) {
 }
 #endif
 
-// OLED SCREEN
+// OLED SCREEN - Status
 #ifdef OLED_ENABLE
 static void render_background(void) {
     static const char PROGMEM ferris_logo_bg[][8*16] = {
@@ -321,7 +327,7 @@ void render_mods(uint8_t modifiers) {
     }
 }
 
-// Render Menu
+// OLED SCREEN - Menu
 static void render_menu_line(const char *data, uint8_t pos, bool on) {
     static const char PROGMEM menu_top_off[] = "\x8c\x8d\x8d\x8d\x8d\x8d\x8d\x8e";
     static const char PROGMEM menu_top_on[] = "\xac\xad\xad\xad\xad\xad\xad\xae";
@@ -331,7 +337,6 @@ static void render_menu_line(const char *data, uint8_t pos, bool on) {
     static const char PROGMEM menu_right_on[] = "\xb0";
     static const char PROGMEM menu_mid_off[] = "\xcc\xcd\xcd\xcd\xcd\xcd\xcd\x8e";
     static const char PROGMEM menu_mid_on[] = "\xec\xed\xed\xed\xed\xed\xed\xae";
-    static const char PROGMEM menu_bottom[] = "\x91\x92\x92\x92\x92\x92\x92\x20";
 
     if(on) {
         if(pos == 0) {
@@ -352,16 +357,82 @@ static void render_menu_line(const char *data, uint8_t pos, bool on) {
         oled_write_P(data, false);
         oled_write_P(menu_right_off, false);
     }
-
-    if(pos == MENU_MAX_ITEMS - 1) {
-        oled_write_P(menu_bottom, false);
-    }
 }
 
 static void render_menu(void) {
     for(uint8_t i = 0; i < MENU_MAX_ITEMS; i++) {
         render_menu_line(menu_line[i], i, menu_selected == i);
     }
+}
+
+#define WPM_HISTOGRAM_SIZE 27
+#define WPM_HISTOGRAM_TIME 1000
+// Convert a value from 0 to 127 into a binary bar
+char int_to_bar(uint8_t val) {
+    if(val < 0x08)
+        return 0x00;
+    if(val < 0x18)
+        return 0x80;
+    if(val < 0x28)
+        return 0xc0;
+    if(val < 0x38)
+        return 0xe0;
+    if(val < 0x48)
+        return 0xf0;
+    if(val < 0x58)
+        return 0xf8;
+    if(val < 0x68)
+        return 0xfc;
+    if(val < 0x78)
+        return 0xfe;
+    return 0xff;
+}
+
+static void render_wpm(void) {
+    static uint8_t histogram[WPM_HISTOGRAM_SIZE] = {0};
+    static uint8_t offset = 0;
+    static uint32_t wpm_anim_timer = 0;
+
+    static const char PROGMEM wpm_bottom[] = {
+        0x00, 0x01, 0x03, 0x07, 0x07, 0x07, 0x07, 0x07,
+        0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
+        0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
+        0x07, 0x07, 0x07, 0x07, 0x03, 0x01, 0x00, 0x00,
+    };
+
+    static char wpm_render[64] = {
+        0x00, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x00, 0x00,
+
+        0x00, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x00, 0x00,
+    };
+
+    if(timer_elapsed32(wpm_anim_timer) > WPM_HISTOGRAM_TIME) {
+        uint8_t current_wpm = get_current_wpm();
+        wpm_anim_timer = timer_read32();
+        histogram[offset] = current_wpm;
+        offset = (offset + 1) % WPM_HISTOGRAM_SIZE;
+
+        for(uint8_t i = 0; i < WPM_HISTOGRAM_SIZE; i++) {
+            // row 1
+            uint8_t row_1 = histogram[(i + offset) % WPM_HISTOGRAM_SIZE] - 0x80;
+            wpm_render[i + 2] = int_to_bar(row_1 < 0x80 ? row_1 : 0);
+            // row 2
+            uint8_t row_2 = histogram[(i + offset) % WPM_HISTOGRAM_SIZE];
+            wpm_render[i + 34] = int_to_bar(row_2 < 0x80 ? row_2 : 0xff);
+        }
+    }
+
+    oled_set_cursor(0, 12);
+    oled_write_P(PSTR("\xcc\xcd\xcd\xcd\xcd\xcd\xcd\x8e"), false);
+    oled_write_raw_P(wpm_render, sizeof(wpm_render));
+    oled_set_cursor(0, 15);
+    oled_write_raw_P(wpm_bottom, sizeof(wpm_bottom));
 }
 
 bool oled_task_user(void) {
@@ -372,6 +443,7 @@ bool oled_task_user(void) {
         render_mods(get_mods()|get_oneshot_mods());
     } else {
         render_menu();
+        render_wpm();
     }
 
     return false;
