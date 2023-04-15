@@ -13,7 +13,7 @@
 static const char PROGMEM macro_0[] = "#[derive(Clone, Debug)]\n";
 static const char PROGMEM macro_1[] = "#[cfg(test)]\nmod tests {\nuse super::*;\nuse rstest::*;\nuse speculoos::prelude::*;\nuse mockall::predicate::*;\n\n";
 static const char PROGMEM macro_2[] = "Kwak.";
-static const char PROGMEM macro_3[] = "";
+static const char PROGMEM macro_3[] = "Woof.";
 static const char PROGMEM macro_4[] = "";
 static const char PROGMEM macro_5[] = "";
 static const char PROGMEM *macros[MENU_MAX_ITEMS] = {
@@ -28,7 +28,7 @@ static const char PROGMEM menu_line[MENU_MAX_ITEMS][7] = {
     "Derive",
     "Test\x03\x04",
     "\x01\x02\x01\x02\x01\x02",
-    "      ",
+    "\x07\x08\x07\x08\x07\x08",
     "      ",
     "      "
 };
@@ -115,10 +115,7 @@ void set_layer_light(uint8_t layer) {
             rgblight_sethsv(HSV_AZURE);
             break;
         case _FN:
-            rgblight_sethsv(HSV_MAGENTA);
-            break;
-        case _MAC:
-            rgblight_sethsv(HSV_GREEN);
+            rgblight_sethsv(HSV_RED);
             break;
         default:
             rgblight_sethsv(HSV_WHITE);
@@ -474,6 +471,11 @@ void user_sync_menu_slave_handler(uint8_t in_buflen, const void *in_data, uint8_
 }
 
 // General functions
+void keyboard_pre_init_user(void) {
+    // Turn off microcontroller LED
+    setPinOutput(24);
+    writePinHigh(24);
+}
 void keyboard_post_init_user(void) {
     debug_enable = true;
     transaction_register_rpc(USER_SYNC_MENU, user_sync_menu_slave_handler);
